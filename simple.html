@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>Firebase_version9_RealtimeDB(G'sACADEMY初学者用サンプル)</title>
+</head>
+<body>
+
+<!-- コンテンツ表示画面 -->
+
+<div>
+    <div> 名前：<input type="text" id="uname"> </div>
+    <div>
+        <textarea id="text" cols="30" rows="10"></textarea>
+        <button id="send">送信</button>
+    </div>
+    <div id="output" style="overflow: auto; height: 800px;"></div>
+</div>
+<!--/ コンテンツ表示画面 -->
+
+
+
+<!-- JQuery -->
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<!-- JQuery -->
+
+
+<!--** 以下Firebase **-->
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+  import { getDatabase, ref, push, set, update, onChildAdded, remove,  onChildChanged, onChildRemoved } 
+  from "https://www.gstatic.com/firebasejs/12.6.0/firebase-database.js";
+
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+　const firebaseConfig = {
+
+};
+
+ // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  // Realtime Database のルート（今まで通り "chat" を使う）
+  const dbRef = ref(db, "chat");
+
+
+ // 送信ボタン
+$("#send").on("click", function () {
+  const msg = {
+    uname: $("#uname").val(),
+    text: $("#text").val(),
+    role: "user",
+  };
+
+  const newPostRef = push(dbRef);
+  set(newPostRef, msg);
+
+  // 送信後にテキストボックスを空にする
+  $("#text").val("");
+});
+
+
+  // 受信（新規追加）
+  onChildAdded(dbRef, function (data) {
+    const msg = data.val();
+    const key = data.key; // ユニークキー /削除・更新に必須
+
+    let h = '<p id="' + key + '">';
+
+    if (msg.role === "assistant") {
+      // Bot のメッセージ
+      h += "<strong>DeepDive Bot</strong><br>";
+      h += '<span>' + msg.text + "</span>";
+    } else {
+      // ユーザーのメッセージ
+      h += msg.uname + "<br>";
+      h +=
+        '<span contentEditable="true" id="' +
+        key +
+        '_update">' +
+        msg.text +
+        "</span>";
+      h +=
+        '<span class="ramove" data-key="' +
+        key +
+        '">削除　</span>';
+      h +=
+        '<span class="update" data-key="' +
+        key +
+        '">更新　</span>';
+    }
+
+    h += "</p>";
+    $("#output").append(h);
+  });
+
+  // 削除 : DBから削除
+  $("#output").on("click", ".ramove", function () {
+    const key = $(this).attr("data-key");
+    const delRef = ref(db, "chat/" + key);
+    remove(delRef);
+  });
+
+  // 更新 : DBの text を更新
+  $("#output").on("click", ".update", function () {
+    const key = $(this).attr("data-key");
+    update(ref(db, "chat/" + key), {
+      text: $("#" + key + "_update").html(),
+    });
+  });
+
+  // Firebase 側で削除されたとき
+  onChildRemoved(dbRef, function (data) {
+    $("#" + data.key).remove();
+  });
+
+  // Firebase 側で更新されたとき
+  onChildChanged(dbRef, function (data) {
+    $("#" + data.key + "_update").html(data.val().text);
+    $("#" + data.key + "_update")
+      .fadeOut(800)
+      .fadeIn(800);
+  });
+</script>
+
+</body>
+</html>
+
